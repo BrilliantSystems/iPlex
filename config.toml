@@ -1,0 +1,38 @@
+#Information about the Plex server to apply ratings to
+[PlexInfo]
+#Enter the domain/address and port for your Plex server. format: http://[domain/ip]:[port]/
+url = "http://localhost:32400/"
+
+#[FIGURE OUT WAY TO EXPLAIN THIS EASILY]
+serverToken = "wSA4599R_xfU1yV1mdh7"
+
+#Enter the name of the server associated with the URL.
+serverName = "MovieMonolith"
+
+#Enter the name of the specific music library to import ratings to.
+libraryName = "Music (MP3)"
+
+#Information about the itunes library to import ratings from
+[iTunesInfo]
+#Locate the file named "iTunes Library.xml" in your iTunes folder, usually in C:/users/[username]/Music/iTunes on windows.
+libraryFile = "/mnt/media-drive/iTunes/iTunes Library.xml"
+
+#Settings for import behavior
+[ImportSettings]
+#When set to true, the import script will run without any user input, using the values below to determine the behavior of the import.
+autoImport = false
+
+#When a track in an album does not have a specific rating but others in the album do, iTunes creates a "computed rating" for that file. 
+#When set to true, the import script will honor those ratings. when set to false, the script will only use ratings explicitly set in iTunes.
+useComputedSongRatings = false 
+
+#When set to true, the import script will overwrite existing song ratings in Plex. When set to false, only songs that do not have a rating will have a rating imported from iTunes, if available.
+overwriteExistingSongRatings = false
+
+#Similar to useComputedSongRatings, iTunes will generate a computed album rating. If the album is not rated explicitly, the computed rating will be set to the average of all rated songs in the album.
+#When set to true, the import script will honor those ratings. when set to false, the script will only use ratings explicitly set in iTunes.
+useComputedAlbumRatings = true
+
+#Similar to overwriteExistingSongRatings.
+#When set to true, the import script will overwrite existing album ratings in Plex. When set to false, only albums that do not have a rating will have a rating imported from iTunes, if available.
+overwriteExistingAlbumRatings = true

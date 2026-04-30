@@ -1,0 +1,211 @@
+"""plex-music-import-ratings"""
+
+from datetime import datetime
+import sys
+import time
+from plexapi.server import PlexServer
+from plexapi.exceptions import BadRequest
+from libpytunes import Library
+import config
+
+if __name__ == '__main__':
+    # Defines
+    PLEX_URL = config.plexUrl
+    PLEX_NAME = config.plexName
+    PLEX_TOKEN = config.plexToken
+    PLEX_IDENTIFIER = 'com.plexapp.plugins.library'
+    APPLE_MUSIC_LIBRARY_NAME = config.appleMusicLibraryName
+    LOG_FILE = 'details.log'
+    AUTO_IMPORT = config.autoImport
+    OVERWRITE_RATINGS = config.overwriteExistingRatings
+    SYNC_ONE_STAR_RATINGS = config.syncOneStarRatings
+    USE_COMPUTED_RATINGS = config.useComputedRatings
+    USE_COMPUTED_ALBUM_RATINGS = config.useComputedAlbumRatings
+    OVERWRITE_ALBUM_RATINGS = config.overwriteExistingAlbumRatings
+    RATING_THRESHOLD = 10
+
+    #take user input if not doing an automatic import, as determined by config.py
+    if not AUTO_IMPORT:
+        # start logic
+        CHOICE_YES = {'yes', 'y'}
+        CHOICE_NO = {'no', 'n'}
+        CHOICE_OVERWRITE = input(
+            "Overwrite your existing Plex song ratings? (y/n): ").lower()
+        if CHOICE_OVERWRITE in CHOICE_YES:
+            print("[INFO] Overwriting existing ratings")
+            OVERWRITE_RATINGS = True
+        elif CHOICE_OVERWRITE in CHOICE_NO:
+            print("[INFO] Skipping existing ratings")
+            OVERWRITE_RATINGS = False
+        else:
+            print("[ERROR] Please respond with 'y' or 'n'. Exiting...")
+            sys.exit(0)
+
+        CHOICE_RATINGS = input(
+            "Do you want to sync 1 star ratings? (y/n): ").lower()
+        if CHOICE_RATINGS in CHOICE_YES:
+            print("[INFO] Syncing 1 star ratings")
+            RATING_THRESHOLD = 10
+        elif CHOICE_RATINGS in CHOICE_NO:
+            print("[INFO] Skipping 1 star ratings")
+            RATING_THRESHOLD = 20
+        else:
+            print("[ERROR] Please respond with 'y' or 'n'. Exiting...")
+            sys.exit(0)
+
+        CHOICE_COMPUTED_RATINGS = input(
+            "Do you want to sync computed ratings? (y/n): ").lower()
+        if CHOICE_COMPUTED_RATINGS in CHOICE_YES:
+            print("[INFO] Syncing computed ratings")
+            USE_COMPUTED_RATINGS = True
+        elif CHOICE_COMPUTED_RATINGS in CHOICE_NO:
+            print("[INFO] Skipping computed ratings")
+            USE_COMPUTED_RATINGS = False
+        else:
+            print("[ERROR] Please respond with 'y' or 'n'. Exiting...")
+            sys.exit(0)
+
+        CHOICE_COMPUTED_ALBUM_RATINGS = input(
+            "Do you want to sync computed album ratings? (y/n): ").lower()
+        if CHOICE_COMPUTED_ALBUM_RATINGS in CHOICE_YES:
+            print("[INFO] Syncing computed album ratings")
+            USE_COMPUTED_ALBUM_RATINGS = True
+        elif CHOICE_COMPUTED_ALBUM_RATINGS in CHOICE_NO:
+            print("[INFO] Skipping computed album ratings")
+            USE_COMPUTED_ALBUM_RATINGS = False
+        else:
+            print("[ERROR] Please respond with 'y' or 'n'. Exiting...")
+            sys.exit(0)
+
+        CHOICE_OVERWRITE_ALBUM_RATINGS = input(
+            "Overwrite your existing Plex album ratings? (y/n): ").lower()
+        if CHOICE_OVERWRITE_ALBUM_RATINGS in CHOICE_YES:
+            print("[INFO] Overwriting existing album ratings")
+            OVERWRITE_ALBUM_RATINGS = True
+        elif CHOICE_OVERWRITE_ALBUM_RATINGS in CHOICE_NO:
+            print("[INFO] Skipping existing album ratings")
+            OVERWRITE_ALBUM_RATINGS = False
+        else:
+            print("[ERROR] Please respond with 'y' or 'n'. Exiting...")
+            sys.exit(0)
+
+
+    #set the rating threshold depending on value in config if doing an automatic import
+    else:
+        if OVERWRITE_RATINGS:
+            print('[INFO] Overwriting existing ratings')
+        else:
+            print("[INFO] Skipping existing ratings")
+
+        if SYNC_ONE_STAR_RATINGS:
+            print("[INFO] Syncing 1 star ratings")
+            RATING_THRESHOLD = 10
+        else:
+            print("[INFO] Skipping 1 star ratings")
+            RATING_THRESHOLD = 20
+
+        if USE_COMPUTED_RATINGS:
+            print("[INFO] Syncing computed ratings")
+        else:
+            print("[INFO] Skipping computed ratings")
+
+        if USE_COMPUTED_ALBUM_RATINGS:
+            print("[INFO] Syncing computed album ratings")
+        else:
+            print("[INFO] Skipping computed album ratings")
+
+        if OVERWRITE_ALBUM_RATINGS:
+            print("[INFO] Overwriting existing album ratings")
+        else:
+            print("[INFO] Skipping existing album ratings")
+
+
+    print("[INFO] Loading Apple Music library...")
+    appleMusicLibrary = Library(APPLE_MUSIC_LIBRARY_NAME)
+    appleMusicLibraryCount = len(appleMusicLibrary.songs.items())
+    print("[INFO] Total number of Apple Music tracks: ", appleMusicLibraryCount)
+    file_debug = open("library-parsed-rated-songs.log", "w", encoding="utf-8")
+    for id, song in appleMusicLibrary.songs.items():
+        if song and song.rating:
+            file_debug.write("{a} - {t}, {r}\n".format(
+                a=song.artist, t=song.name, r=song.rating))
+    time.sleep(2)
+
+    print("[INFO] Optimizing Apple Music library...")
+    APPLE_MUSIC_RATING_LIST = {}
+    ALBUM_RATING_LIST = {}
+    COUNTER = 0
+    for x, song in appleMusicLibrary.songs.items():
+        COUNTER += 1
+        print("\r[", COUNTER, "/", appleMusicLibraryCount,
+              "]     ", end='', flush=True)
+        if song and song.rating and song.rating > RATING_THRESHOLD and (not song.rating_computed or USE_COMPUTED_RATINGS):
+            SONG_FULL_NAME = str(song.name) + ' - ' + \
+                str(song.artist) + ' - ' + str(song.album)
+            SONG_RATING = song.rating/10
+            ALBUM_RATING = song.album_rating
+            APPLE_MUSIC_RATING_LIST[SONG_FULL_NAME] = SONG_RATING
+
+        if song and song.album_rating and (not song.album_rating_computed or USE_COMPUTED_ALBUM_RATINGS):
+            ALBUM_RATING = song.album_rating/10
+            ALBUM_RATING_LIST[song.album] = ALBUM_RATING
+
+    print("\n[INFO] Total number of Apple Music tracks with ratings: ",
+          len(APPLE_MUSIC_RATING_LIST))
+    print("[INFO] Total number of Apple Music albums with ratings: ",
+          len(ALBUM_RATING_LIST))
+    time.sleep(1)
+
+    print("[INFO] Connecting to Plex server...")
+    plex = PlexServer(PLEX_URL, PLEX_TOKEN)
+    music = plex.library.section(config.plexMusicLibrary)
+
+    print("[INFO] Loading Plex music library in memory. This may take a while...")
+    plexLibrary = music.searchTracks()
+    plexLibraryCount = len(plexLibrary)
+    print("[INFO] Total number of Plex tracks: ", plexLibraryCount)
+    time.sleep(1)
+    
+    # TODO: add support for removing Plex-only ratings when the Apple Music rating is blank?
+
+    print("[INFO] [", datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+          "] Updating ratings... See", LOG_FILE, "for more information")
+    with open(LOG_FILE, "w", encoding="utf-8") as file:
+        COUNTER = 0
+        for plexTrack in plexLibrary:
+            COUNTER += 1
+            print("\r[", COUNTER, "/", plexLibraryCount,
+                "]     ", end='', flush=True)
+            TRACK_FULL_NAME = str(plexTrack.title) + ' - ' + \
+                str(plexTrack.artist().title) + \
+                ' - ' + str(plexTrack.album().title)
+
+            plexAlbum = plexTrack.album()
+            ALBUM_NAME = plexAlbum.title
+            if OVERWRITE_ALBUM_RATINGS or int(0 if plexAlbum.userRating is None else plexAlbum.userRating) < 1:
+                ratingValue = ALBUM_RATING_LIST.get(ALBUM_NAME, 999)
+                if ratingValue < 999 and ratingValue != plexAlbum.userRating:
+                    try:
+                        plexAlbum.rate(ratingValue)
+                        file.write("[MATCHED] [ALBUM] Rating changed           : [" + str(plexAlbum.userRating)
+                                + "] => [" + str(ratingValue) + "] : " + str(plexAlbum.title) + "\n")
+                    except BadRequest:
+                        file.write("[SKIPPED] [ALBUM] Unknown error        : "
+                                + str(plexAlbum.title) + "\n")
+            #if plexAlbum.title in ALBUM_RATING_LIST and (plexAlbum.userRating is None or OVERWRITE_ALBUM_RATINGS):
+            #    ALBUM_RATING = float(0 if plexAlbum.userRating is None else )
+            #    print(str(plexTrack.album().title) + ": " + str(ALBUM_RATING_LIST[plexTrack.album().title]))
+
+            if OVERWRITE_RATINGS or int(0 if plexTrack.userRating is None else plexTrack.userRating) < 1:
+                ratingValue = APPLE_MUSIC_RATING_LIST.get(TRACK_FULL_NAME, 999)
+                if ratingValue < 999 and ratingValue != plexTrack.userRating:
+                    try:
+                        plexTrack.rate(ratingValue)
+                        file.write("[MATCHED] [TRACK] Rating changed           : [" + str(plexTrack.userRating)
+                                + "] => [" + str(ratingValue) + "] : " + str(TRACK_FULL_NAME) + "\n")
+                    except BadRequest:
+                        file.write("[SKIPPED] [TRACK] Unknown error        : "
+                                + str(TRACK_FULL_NAME) + "\n")
+        file.close()
+    print("\n[INFO] [", datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"), "] Complete!")
