@@ -4,18 +4,15 @@
 url = "http://localhost:32400/"
 
 #[FIGURE OUT WAY TO EXPLAIN THIS EASILY]
-serverToken = "wSA4599R_xfU1yV1mdh7"
+serverToken = "your_key_here"
 
-#Enter the name of the server associated with the URL.
-serverName = "MovieMonolith"
-
-#Enter the name of the specific music library to import ratings to.
-libraryName = "Music (MP3)"
+#Enter the name of the specific music library to apply imported ratings to.
+libraryName = "your_library_name_here"
 
 #Information about the itunes library to import ratings from
 [iTunesInfo]
 #Locate the file named "iTunes Library.xml" in your iTunes folder, usually in C:/users/[username]/Music/iTunes on windows.
-libraryFile = "/mnt/media-drive/iTunes/iTunes Library.xml"
+libraryFile = "your_itunes_library_here"
 
 #Settings for import behavior
 [ImportSettings]
